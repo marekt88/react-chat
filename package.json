@@ -1,0 +1,50 @@
+{
+  "version": "1.0.0",
+  "author": "Ben Teichman, Tyler Han",
+  "bugs": {
+    "url": "https://github.com/voiceflow/react-chat/issues"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  },
+  "devDependencies": {
+    "@commitlint/cli": "17.0.3",
+    "@commitlint/config-conventional": "17.0.3",
+    "@voiceflow/commitlint-config": "2.0.0",
+    "@voiceflow/git-branch-check": "1.4.1",
+    "cz-conventional-changelog": "^3.3.0",
+    "depcheck": "^1.4.3",
+    "fixpack": "^4.0.0",
+    "husky": "7.0.0",
+    "lint-staged": ">=10",
+    "turbo": "1.5.5"
+  },
+  "homepage": "https://github.com/voiceflow/react-chat#readme",
+  "keywords": [
+    "react",
+    "voiceflow"
+  ],
+  "license": "ISC",
+  "packageManager": "yarn@3.2.1",
+  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "build:all": "yarn build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "lint:report": "turbo run lint:report",
+    "prepare": "husky install",
+    "setup_github_pages": "./scripts/setup_github_pages.sh",
+    "test:dependencies": "depcheck && turbo run test:dependencies",
+    "test:unit": "turbo run test:unit"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
+}

@@ -1,0 +1,113 @@
+version: 2.1
+
+parameters:
+  ssh-fingerprint:
+    type: string
+    default: "72:f9:3d:87:22:40:dd:a4:81:13:16:f0:10:c8:7d:d0"
+  build-apps:
+    type: boolean
+    default: false
+  build-all:
+    type: boolean
+    default: false
+
+orbs:
+  vfcommon: voiceflow/common@0.39.1
+  sonarcloud: sonarsource/sonarcloud@1.0.2
+
+defaults:
+  slack-fail-post-step: &slack-fail-post-step
+    post-steps:
+      - vfcommon/notify_slack:
+          channel: dev_general
+          event: fail
+          mentions: "@eng_platform"
+          template: basic_fail_1
+          branch_pattern: master
+
+jobs:
+  test: # Main unit, style, and dependency tests
+    executor: vfcommon/node-executor
+    steps: # a collection of executable commands
+      - checkout
+      - attach_workspace:
+          at: ~/voiceflow
+      - vfcommon/install_node_modules:
+          avoid_post_install_scripts: false
+      - vfcommon/monorepo_lint_report:
+          force_execution: << pipeline.parameters.build-all >>
+          run_on_root: true
+      - vfcommon/monorepo_dependency_tests:
+          force_execution: << pipeline.parameters.build-all >>
+          run_on_root: true
+      - vfcommon/monorepo_unit_tests:
+          force_execution: << pipeline.parameters.build-all >>
+          run_on_root: true
+      - vfcommon/monorepo_save_cache:
+          package: "all"
+          monorepo_engine: "turborepo"
+          cache_identifier: "monorepo-test-cache"
+      ## disable sonarcloud until project set up
+      # - sonarcloud/scan
+
+  push-to-cdn: # Main unit, style, and dependency tests
+    executor: vfcommon/node-executor
+    steps: # a collection of executable commands
+      - attach_workspace:
+          at: ~/voiceflow
+      - vfcommon/clone_s3_assets:
+          step_name: Uploading React Chat to CDN
+          from: packages/react-chat/dist
+          to: s3://cdn.voiceflow.com/react-chat
+          clean_destination: false
+      - vfcommon/clone_s3_assets:
+          step_name: Uploading Widget to CDN
+          from: packages/widget/dist
+          to: s3://cdn.voiceflow.com/widget
+          clean_destination: true
+
+workflows:
+  test-and-release:
+    jobs:
+      - vfcommon/install_and_build:
+          <<: *slack-fail-post-step
+          context: dev-test
+          avoid_post_install_scripts: false
+          name: build
+          package: all
+          monorepo_engine: "turborepo"
+          force_execute: true
+          run_in_container: false
+          container_folder_to_copy: "" #Copy all
+          post_build_steps:
+            - persist_to_workspace:
+                root: "."
+                paths:
+                  - ./*/*/dist # persist dist folder too
+
+      - test:
+          <<: *slack-fail-post-step
+          context: dev-test
+          requires:
+            - build
+
+      - vfcommon/monorepo_release:
+          <<: *slack-fail-post-step
+          avoid_post_install_scripts: false
+          ssh_key: << pipeline.parameters.ssh-fingerprint >>
+          context: dev-test
+          release_engine: "lite"
+          commit_message: "chore(release): publish --skip-ci"
+          requires:
+            - test
+          filters:
+            branches:
+              only: master
+
+      - push-to-cdn:
+          context: dev-test
+          requires:
+            - vfcommon/monorepo_release
+          filters:
+            branches:
+              only: master
