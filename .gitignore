@@ -8,6 +8,12 @@ log/
 
 .nyc_output
 
+packages/react-chat/.turbo/
+packages/react-chat/build/
+packages/react-chat/node_modules/
+packages/widget/.turbo/
+packages/widget/node_modules/
+
 # Yarn
 .pnp.*
 .yarn/*
